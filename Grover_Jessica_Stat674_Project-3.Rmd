@@ -1,0 +1,73 @@
+---
+title: "Stat. 674 Project"
+author: "Jessica Grover"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+
+```{r, warning = FALSE, message=FALSE, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(tsibble)
+library(patchwork)
+library(COVID19)
+library(fpp3)
+```
+
+
+
+```{r, warning = FALSE, message=FALSE,}
+covid <- covid19(c("China", "Italy"))
+covid <- covid %>% as_tsibble(key = "administrative_area_level_1", index = "date")
+```
+
+
+```{r, }
+ggplot(covid, aes(x = date, y = confirmed, color = administrative_area_level_1)) + geom_line() +
+  labs(color = "Country")
+```
+
+
+## Model.
+
+```{r}
+covid <- covid %>% select(confirmed) %>% drop_na()
+fit <- covid %>%
+  model( Linear = TSLM( confirmed ~ trend()), 
+         ETS = ETS(confirmed ~ error("A") + trend("A")  + season('N')))
+fc <- fit %>% forecast(h = 360)
+fc %>% autoplot(covid, level = NULL) +  labs() 
+```
+
+
+## diagnostic
+
+```{r}
+fit1 <- covid %>% filter(administrative_area_level_1 == "China") %>%
+  model(AAN = ETS(confirmed ~ error("A") + trend("A")  + season('N'))) 
+fit1 %>% gg_tsresiduals() +ggtitle("diagnostic China")
+```
+
+```{r}
+fit2 <- covid %>% filter(administrative_area_level_1 == "Italy") %>%
+  model(AAN = ETS(confirmed ~ error("A") + trend("A")  + season('N'))) 
+fit2 %>% gg_tsresiduals() +ggtitle("diagnostic Italy")
+```
+
+
+## forecasting
+
+```{r}
+fit1  %>% forecast(h = 360) %>% autoplot(covid, level = NULL) +  
+  labs(title = "Forecasting China Covid", x = "", y ="") 
+```
+
+```{r}
+fit2  %>% forecast(h = 360) %>% autoplot(covid, level = NULL) +  
+  labs(title = "Forecastiong Italy Covid", x = "", y ="")
+```
+
+
